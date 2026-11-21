@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "local.desktop-notes",
+  "name": "Desktop Notes",
+  "version": "1.0.0",
+  "author": "Local",
+  "description": "Desktop notes and checklist with local automatic saving.",
+  "kinds": ["service"],
+  "entryPoints": { "service": "Service.qml" },
+  "license": "MIT"
+}

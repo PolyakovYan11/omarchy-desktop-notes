@@ -8,5 +8,7 @@
   "remove": "Remove",
   "error": "Could not load notes. Changes are disabled to protect your data.",
   "shortcut": "Notes: Super + Alt + N",
-  "confirm": "Save and finish editing"
+  "confirm": "Save and finish editing",
+  "actions": "More actions",
+  "edit": "Edit"
 }

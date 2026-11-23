@@ -26,7 +26,7 @@ Scope {
         if (!item || (item.kind !== "note" && item.kind !== "task") || typeof item.text !== "string" || item.text.length > 20000 || typeof item.done !== "boolean") throw new Error("Invalid entry")
       }
       entries.clear()
-      for (let i = 0; i < data.length; ++i) entries.append(data[i])
+      for (let i = 0; i < data.length; ++i) entries.append({kind: data[i].kind, text: data[i].text, done: data[i].done, editing: false})
       ready = true
     } catch (error) { failed = true; console.warn("Desktop Notes: invalid data", error) }
   }
@@ -41,7 +41,7 @@ Scope {
   }
   function add(kind) {
     if (!ready) return
-    entries.append({kind: kind, text: "", done: false})
+    entries.append({kind: kind, text: "", done: false, editing: true})
     save()
   }
   Commons.ShellIpc {
@@ -172,9 +172,13 @@ Scope {
                 required property string kind
                 required property string text
                 required property bool done
-                function edit() { editor.forceActiveFocus() }
+                required property bool editing
+                function edit() {
+                  entries.setProperty(row.index, "editing", true)
+                  Qt.callLater(function() { editor.forceActiveFocus() })
+                }
                 width: list.width
-                height: Math.max(48, editor.implicitHeight + 12)
+                height: Math.max(48, (row.editing ? editor.implicitHeight : displayText.implicitHeight) + 12)
                 radius: 9
                 color: Qt.rgba(Commons.Color.foreground.r, Commons.Color.foreground.g, Commons.Color.foreground.b, 0.07)
                 RowLayout {
@@ -187,8 +191,21 @@ Scope {
                     checked: row.done
                     onToggled: { entries.setProperty(row.index, "done", checked); root.save() }
                   }
+                  Text {
+                    id: displayText
+                    visible: !row.editing
+                    Layout.fillWidth: true
+                    Layout.alignment: Qt.AlignVCenter
+                    text: row.text
+                    textFormat: Text.PlainText
+                    wrapMode: Text.Wrap
+                    color: Commons.Color.popups.text
+                    opacity: row.done ? 0.55 : 1
+                    font.strikeout: row.done
+                  }
                   TextArea {
                     id: editor
+                    visible: row.editing
                     Layout.fillWidth: true
                     Layout.alignment: Qt.AlignVCenter
                     text: row.text
@@ -209,6 +226,7 @@ Scope {
                   }
                   Button {
                     text: "✓"
+                    visible: row.editing
                     enabled: root.ready && !root.failed
                     Accessible.name: strings.t("confirm")
                     ToolTip.text: strings.t("confirm")
@@ -218,13 +236,27 @@ Scope {
                       entries.setProperty(row.index, "text", editor.text.slice(0, 20000))
                       root.save()
                       editor.focus = false
+                      entries.setProperty(row.index, "editing", false)
                     }
                   }
                   Button {
-                    text: "×"
+                    id: actionsButton
+                    text: "⋯"
+                    visible: !row.editing
                     enabled: root.ready && !root.failed
-                    Accessible.name: strings.t("remove")
-                    onClicked: { saveTimer.stop(); entries.remove(row.index); root.save() }
+                    Accessible.name: strings.t("actions")
+                    onClicked: actionsMenu.open()
+                    Menu {
+                      id: actionsMenu
+                      MenuItem {
+                        text: strings.t("edit")
+                        onTriggered: row.edit()
+                      }
+                      MenuItem {
+                        text: strings.t("remove")
+                        onTriggered: { saveTimer.stop(); entries.remove(row.index); root.save() }
+                      }
+                    }
                   }
                 }
               }

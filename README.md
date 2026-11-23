@@ -6,6 +6,13 @@ A desktop widget for notes and checklist items, built as an Omarchy shell plugin
 - Check off tasks or remove individual entries.
 - Changes are saved locally and automatically to `~/.local/state/omarchy/desktop-notes.json`.
 - The widget appears in the upper-right corner of the first display, behind application windows.
+- Toggle it with `omarchy-shell desktopNotes toggle`; a desktop hint shows the configured shortcut. The default hint assumes Super + Alt + N.
+
+Add this line to `~/.config/hypr/bindings.lua` to set the shortcut, if it is free:
+
+```lua
+o.bind("SUPER + ALT + N", "Desktop notes", "omarchy-shell desktopNotes toggle")
+```
 
 ## Installation
 

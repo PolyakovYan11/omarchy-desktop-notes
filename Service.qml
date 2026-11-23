@@ -10,6 +10,7 @@ import qs.Commons as Commons
 Scope {
   id: root
   property var shell: null
+  property bool shown: true
   property bool ready: false
   property bool failed: false
   property string dataPath: Quickshell.env("HOME") + "/.local/state/omarchy/desktop-notes.json"
@@ -42,7 +43,45 @@ Scope {
     if (!ready) return
     entries.append({kind: kind, text: "", done: false})
     save()
-    Qt.callLater(function() { list.positionViewAtEnd() })
+  }
+  Commons.ShellIpc {
+    target: "desktopNotes"
+    function toggle(): void { root.save(); root.shown = !root.shown }
+    function status(): string { return root.shown ? "shown" : "hidden" }
+  }
+  Variants {
+    model: Quickshell.screens.length ? [Quickshell.screens[0]] : []
+    PanelWindow {
+      id: hint
+      required property var modelData
+      screen: modelData
+      implicitWidth: label.implicitWidth + 24
+      implicitHeight: 26
+      anchors.top: true
+      anchors.right: true
+      margins.top: 38
+      margins.right: 20
+      exclusionMode: ExclusionMode.Ignore
+      color: "transparent"
+      WlrLayershell.layer: WlrLayer.Bottom
+      WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+      WlrLayershell.namespace: "desktop-notes-shortcut"
+      Rectangle {
+        anchors.fill: parent
+        radius: 8
+        color: Commons.Color.popups.background
+        border.color: Commons.Color.popups.border
+        Text {
+          id: label
+          anchors.centerIn: parent
+          text: strings.t("shortcut")
+          textFormat: Text.PlainText
+          color: Commons.Color.popups.text
+          font.pixelSize: 12
+        }
+        MouseArea { anchors.fill: parent; onClicked: { root.save(); root.shown = !root.shown } }
+      }
+    }
   }
   Timer { id: saveTimer; interval: 400; onTriggered: root.save() }
   FileView {
@@ -59,6 +98,7 @@ Scope {
       id: window
       required property var modelData
       screen: modelData
+      visible: root.shown
       implicitWidth: Math.min(370, Math.max(260, modelData.width - 32))
       implicitHeight: Math.min(520, Math.max(240, modelData.height - 100))
       anchors.top: true
@@ -89,8 +129,8 @@ Scope {
           }
           RowLayout {
             spacing: 8
-            Button { text: strings.t("note"); enabled: root.ready && !root.failed; onClicked: root.add("note") }
-            Button { text: strings.t("task"); enabled: root.ready && !root.failed; onClicked: root.add("task") }
+            Button { text: strings.t("note"); enabled: root.ready && !root.failed; onClicked: list.addEntry("note") }
+            Button { text: strings.t("task"); enabled: root.ready && !root.failed; onClicked: list.addEntry("task") }
             Item { Layout.fillWidth: true }
           }
           Text {
@@ -113,6 +153,14 @@ Scope {
             }
             ListView {
               id: list
+              function addEntry(kind) {
+                root.add(kind)
+                Qt.callLater(function() {
+                  list.positionViewAtEnd()
+                  const item = list.itemAtIndex(entries.count - 1)
+                  if (item) item.edit()
+                })
+              }
               anchors.fill: parent
               clip: true
               spacing: 8
@@ -124,6 +172,7 @@ Scope {
                 required property string kind
                 required property string text
                 required property bool done
+                function edit() { editor.forceActiveFocus() }
                 width: list.width
                 height: Math.max(48, editor.implicitHeight + 12)
                 radius: 9
@@ -156,6 +205,19 @@ Scope {
                         entries.setProperty(row.index, "text", text.slice(0, 20000))
                         saveTimer.restart()
                       }
+                    }
+                  }
+                  Button {
+                    text: "✓"
+                    enabled: root.ready && !root.failed
+                    Accessible.name: strings.t("confirm")
+                    ToolTip.text: strings.t("confirm")
+                    ToolTip.visible: hovered
+                    onClicked: {
+                      saveTimer.stop()
+                      entries.setProperty(row.index, "text", editor.text.slice(0, 20000))
+                      root.save()
+                      editor.focus = false
                     }
                   }
                   Button {
